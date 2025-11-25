@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Document</title>
+    </head>
+    <style>
+        html,
+        body {
+            margin: 0;
+            height: 100%;
+            background: black;
+            overflow: hidden;
+            color: #e8ebff;
+        }
+        line {
+            stroke: greenyellow;
+            stroke-width: 5;
+            filter: blur(0.5px);
+            opacity: 0.8;
+            transition: opacity 0.2s ease;
+            animation: pulse 1.5s ease infinite;
+        }
+        @keyframes pulse {
+            0% {
+                opacity: 0.5;
+            }
+            50% {
+                opacity: 0.8;
+            }
+            100% {
+                opacity: 0.5;
+            }
+        }
+        #myVideo {
+            position: fixed;
+            left: 50%;
+            top: 51%;
+            transform: translate(-50%, -50%);
+            width: 30%;
+            height: 45%; /* вертикальное видео */
+            border-radius: 50%; /* если нужно круглое */
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5),
+                0 0 20px rgba(255, 255, 255, 0.1);
+            object-fit: cover;
+        }
+    </style>
+    <body>
+        <video id="myVideo" autoplay loop muted>
+            <source src="./video.mp4" type="video/mp4" />
+        </video>
+
+        <svg
+            id="main_svg"
+            width="100%"
+            height="100%"
+            style="position: fixed; left: 0; top: 0"
+        ></svg>
+    </body>
+    <script>
+        const myLocalStorageKey = "tiktok";
+        const myId = crypto.randomUUID();
+        function debugSetID() {
+            let hBlock = document.getElementById("h5");
+            hBlock.innerHTML = "Welcome: " + myId;
+        }
+        let isRemoved = false;
+
+        function listenLocalStorage() {
+            for (let i = 0; i < localStorage.length; i++) {
+                let key = localStorage.key(i);
+                if (key.startsWith(`${myLocalStorageKey}:`)) {
+                    let secondId = key.split(":")[1];
+                    if (secondId == myId) {
+                        continue;
+                    }
+                    let json = localStorage.getItem(key);
+                    let { x, y } = JSON.parse(json);
+
+                    let { centerOfScreenX, centerOfScreenY } =
+                        getWindowCenter();
+
+                    const sx = window.innerWidth / 2;
+                    const sy = window.innerHeight / 2;
+
+                    const dx = x - centerOfScreenX;
+                    const dy = y - centerOfScreenY;
+
+                    const x2 = sx + dx;
+                    const y2 = sy + dy;
+
+                    changeOrCreateLine(`${secondId}:${myId}`, sx, sy, x2, y2);
+                }
+            }
+        }
+
+        function setCircleToStorage(newX, newY) {
+            if (isRemoved) {
+                return;
+            }
+
+            let { centerOfScreenX, centerOfScreenY } = getWindowCenter();
+            let prevJson = localStorage.getItem(`${myLocalStorageKey}:${myId}`);
+
+            // if (prevJson) {
+            //     let { x, y } = JSON.parse(prevJson);
+            //     if (newX == x && newY == y) {
+            //         return;
+            //     }
+            // }
+
+            localStorage.setItem(
+                `${myLocalStorageKey}:${myId}`,
+                JSON.stringify({
+                    x: newX,
+                    y: newY,
+                })
+            );
+        }
+        function removeConnectedLines(circleId) {}
+        function removeCircleFromStorage() {
+            localStorage.removeItem(`${myLocalStorageKey}:${myId}`);
+            isRemoved = true;
+        }
+
+        window.addEventListener("beforeunload", function (event) {
+            removeCircleFromStorage();
+        });
+    </script>
+
+    <script>
+        function getWindowCenter() {
+            let browser_x = window.screenX;
+            let browser_y = window.screenY;
+            let outer_x = window.outerWidth;
+            let outer_y = window.outerHeight;
+
+            let centerOfScreenX = browser_x + outer_x / 2;
+            let centerOfScreenY = browser_y + outer_y / 2;
+
+            //  let pElement = document.getElementById("main_block");
+            // pElement.innerHTML = "centerOfScreenX: " +  inner_x / 2 + " centerOfScreenY: " + centerOfScreenY;
+
+            return { centerOfScreenX, centerOfScreenY };
+        }
+
+        function changeOrCreateLine(id, x1, y1, x2, y2) {
+            const svgHTML = document.getElementById("main_svg");
+            let svgLineHTML = document.getElementById(id);
+
+            if (!svgLineHTML) {
+                svgLineHTML = document.createElementNS(
+                    "http://www.w3.org/2000/svg",
+                    "line"
+                );
+                svgLineHTML.setAttribute("id", id);
+                svgLineHTML.setAttribute("class", "glow");
+
+                svgHTML.appendChild(svgLineHTML);
+            }
+
+            svgLineHTML.setAttribute("x1", x1);
+            svgLineHTML.setAttribute("y1", y1);
+            svgLineHTML.setAttribute("x2", x2);
+            svgLineHTML.setAttribute("y2", y2);
+        }
+
+        function removeOldLine(id) {
+            let svgLineHTML = document.getElementById(id);
+            svgLineHTML.remove();
+        }
+
+        function frame() {
+            requestAnimationFrame(frame);
+
+            let { centerOfScreenX, centerOfScreenY } = getWindowCenter();
+            let outer_x = window.outerWidth / 2;
+            let outer_y = window.outerHeight / 2;
+
+            if (!(centerOfScreenX == outer_x && centerOfScreenY == outer_y)) {
+                // if coordinates updated we should update local storage
+                setCircleToStorage(centerOfScreenX, centerOfScreenY);
+            }
+            listenLocalStorage();
+        }
+
+        requestAnimationFrame(frame);
+    </script>
+</html>
